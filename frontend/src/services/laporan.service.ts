@@ -42,3 +42,8 @@ export const getLaporanFinal = async (params?: { page?: number; per_page?: numbe
   const response = await apiClient.get('/laporan/final', { params });
   return response.data;
 };
+
+export const submitLaporan = async (id: string): Promise<{ data: DraftLaporanData }> => {
+  const response = await apiClient.post(`/laporan/${id}/submit`);
+  return response.data;
+};

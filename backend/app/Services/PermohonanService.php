@@ -15,7 +15,7 @@ class PermohonanService
      */
     public function getAll(array $filters = []): LengthAwarePaginator
     {
-        $query = PermohonanPengujian::with(['pemohon']);
+        $query = PermohonanPengujian::with(['pemohon', 'registrasiSample.samples', 'jadwalSampling']);
 
         if (!empty($filters['search'])) {
             $search = $filters['search'];
@@ -29,6 +29,17 @@ class PermohonanService
 
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
+        }
+
+        if (isset($filters['unregistered'])) {
+            if ($filters['unregistered'] == 1 || $filters['unregistered'] === 'true' || $filters['unregistered'] === true) {
+                $query->where(function ($q) {
+                    $q->doesntHave('registrasiSample')
+                      ->orWhereHas('registrasiSample', function ($sub) {
+                          $sub->doesntHave('samples.hasilUji');
+                      });
+                });
+            }
         }
 
         return $query->orderByDesc('created_at')
@@ -83,5 +94,77 @@ class PermohonanService
     {
         $permohonan = PermohonanPengujian::findOrFail($id);
         $permohonan->delete();
+    }
+
+    /**
+     * Transition permohonan from PENDING to WAITING_PAYMENT.
+     * Called after admin validates the request.
+     */
+    public function transitionToWaitingPayment(string $id): PermohonanPengujian
+    {
+        $permohonan = PermohonanPengujian::findOrFail($id);
+
+        if ($permohonan->status !== PermohonanStatus::PENDING->value) {
+            throw new \Exception('Permohonan harus berstatus PENDING untuk ditransisi ke WAITING_PAYMENT');
+        }
+
+        $permohonan->update(['status' => PermohonanStatus::WAITING_PAYMENT->value]);
+        $permohonan->load('pemohon');
+
+        return $permohonan;
+    }
+
+    /**
+     * Transition permohonan from WAITING_PAYMENT to PAID.
+     * Called by PaymentService after payment is recorded.
+     */
+    public function transitionToPaid(string $id): PermohonanPengujian
+    {
+        $permohonan = PermohonanPengujian::findOrFail($id);
+
+        if ($permohonan->status !== PermohonanStatus::WAITING_PAYMENT->value) {
+            throw new \Exception('Permohonan harus berstatus WAITING_PAYMENT untuk ditransisi ke PAID');
+        }
+
+        $permohonan->update(['status' => PermohonanStatus::PAID->value]);
+        $permohonan->load('pemohon');
+
+        return $permohonan;
+    }
+
+    /**
+     * Transition permohonan from PAID to SCHEDULED.
+     * Called by JadwalSamplingService after schedule is created.
+     */
+    public function transitionToScheduled(string $id): PermohonanPengujian
+    {
+        $permohonan = PermohonanPengujian::findOrFail($id);
+
+        if ($permohonan->status !== PermohonanStatus::PAID->value) {
+            throw new \Exception('Permohonan harus berstatus PAID untuk ditransisi ke SCHEDULED');
+        }
+
+        $permohonan->update(['status' => PermohonanStatus::SCHEDULED->value]);
+        $permohonan->load('pemohon');
+
+        return $permohonan;
+    }
+
+    /**
+     * Transition permohonan to COMPLETED.
+     * Called when all work (sampling, testing, reporting) is completed.
+     */
+    public function transitionToCompleted(string $id): PermohonanPengujian
+    {
+        $permohonan = PermohonanPengujian::findOrFail($id);
+
+        if ($permohonan->status !== PermohonanStatus::SCHEDULED->value) {
+            throw new \Exception('Permohonan harus berstatus SCHEDULED untuk ditransisi ke COMPLETED');
+        }
+
+        $permohonan->update(['status' => PermohonanStatus::COMPLETED->value]);
+        $permohonan->load('pemohon');
+
+        return $permohonan;
     }
 }

@@ -20,6 +20,7 @@ import Arsip from '../pages/Arsip';
 // Protected Pages (Petugas Lab)
 import SampleMasuk from '../pages/SampleMasuk';
 import Pengujian from '../pages/Pengujian';
+import SampleDiuji from '../pages/SampleDiuji';
 
 // Protected Pages (QC)
 import QcVerifikasi from '../pages/QcVerifikasi';
@@ -71,7 +72,8 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute allowedRoles={['petugas_lab']} />,
             children: [
               { path: 'sample-masuk', element: <SampleMasuk /> },
-              { path: 'pengujian', element: <Pengujian /> }
+              { path: 'pengujian', element: <Pengujian /> },
+              { path: 'sample-diuji', element: <SampleDiuji /> }
             ]
           },
 

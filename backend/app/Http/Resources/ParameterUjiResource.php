@@ -16,6 +16,8 @@ class ParameterUjiResource extends JsonResource
             'id' => $this->id,
             'nama_parameter' => $this->nama_parameter,
             'satuan' => $this->satuan,
+            'kategori' => $this->kategori,
+            'tipe_pengujian' => $this->tipe_pengujian,
             'metode_uji' => $this->metode_uji,
             'baku_mutu_min' => $this->baku_mutu_min,
             'baku_mutu_max' => $this->baku_mutu_max,

@@ -4,9 +4,13 @@ export interface ParameterUjiData {
   id: string;
   nama_parameter: string;
   satuan: string;
-  metode_pengujian: string;
-  baku_mutu: string | null;
+  metode_uji?: string;
+  metode_pengujian?: string;
+  baku_mutu?: string | null;
+  baku_mutu_min?: string | number | null;
+  baku_mutu_max?: string | number | null;
   kategori: string;
+  tipe_pengujian?: string;
   created_at: string;
 }
 
@@ -24,10 +28,27 @@ export interface HasilUjiData {
   parameter_uji_id: string;
   nilai_hasil: number;
   metode_pengujian: string;
-  status: string;
+  status?: string;
+  status_hasil?: string;
+  status_qc?: string;
   catatan: string | null;
-  sample?: Record<string, unknown>;
+  sample?: {
+    id: string;
+    jenis_sample?: string;
+    kondisi_sample?: string;
+    metode_pengambilan?: string;
+    suhu?: string | number;
+    cuaca?: string;
+    lokasi_pengambilan?: string;
+    waktu_pengambilan?: string;
+  };
   parameter?: ParameterUjiData;
+  parameter_uji?: ParameterUjiData;
+  analis?: {
+    id: string;
+    name: string;
+    email: string;
+  };
   created_at: string;
   updated_at: string;
 }

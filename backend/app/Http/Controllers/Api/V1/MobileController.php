@@ -40,9 +40,29 @@ class MobileController extends Controller
     {
         $result = $this->syncService->batchSync($request->validated()['samples']);
 
+        // Auto-update jadwal status to 'berlangsung' for each synced jadwal
+        if ($result['success_count'] > 0) {
+            $jadwalIds = array_unique(
+                array_column($request->validated()['samples'], 'jadwal_sampling_id')
+            );
+            foreach ($jadwalIds as $jadwalId) {
+                try {
+                    $jadwal = \App\Models\JadwalSampling::find($jadwalId);
+                    if ($jadwal && in_array($jadwal->status, ['scheduled', 'dijadwalkan'])) {
+                        $this->jadwalSamplingService->updateStatus($jadwalId, 'berlangsung');
+                    }
+                } catch (\Exception $e) {
+                    // Non-critical — log but don't fail the response
+                    \Illuminate\Support\Facades\Log::warning("Failed to update jadwal status: {$e->getMessage()}");
+                }
+            }
+        }
+
         return $this->successResponse([
-            'success_count' => $result['success_count'],
-            'failed_count' => $result['failed_count'],
+            'synced' => $result['success_count'],
+            'failed' => $result['failed_count'],
+            'errors' => $result['errors'] ?? [],
+            'sample_ids' => $result['sample_ids'] ?? [], // sync_id => sample_id
         ], 'Sinkronisasi berhasil');
     }
 

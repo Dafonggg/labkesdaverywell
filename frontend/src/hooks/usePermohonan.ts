@@ -5,6 +5,7 @@ import {
   createPermohonan,
   updatePermohonan,
   deletePermohonan,
+  verifyPermohonan,
 } from '@/services/permohonan.service';
 import type { PermohonanFilters, PermohonanPayload } from '@/services/permohonan.service';
 import { toast } from 'sonner';
@@ -63,6 +64,22 @@ export const useDeletePermohonan = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PERMOHONAN_KEYS.all });
       toast.success('Permohonan berhasil dihapus!');
+    },
+  });
+};
+
+export const useVerifyPermohonan = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => verifyPermohonan(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PERMOHONAN_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      toast.success('Permohonan diverifikasi! Status berubah ke Menunggu Pembayaran.');
+    },
+    onError: () => {
+      toast.error('Gagal memverifikasi. Pastikan status permohonan masih Pending.');
     },
   });
 };

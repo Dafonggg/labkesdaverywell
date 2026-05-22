@@ -26,7 +26,9 @@ class SampleResource extends JsonResource
             'longitude' => $this->longitude,
             'waktu_pengambilan' => $this->waktu_pengambilan?->toISOString(),
             'status' => $this->status,
+            'catatan' => $this->catatan,
             'hasil_uji' => HasilUjiResource::collection($this->whenLoaded('hasilUji')),
+            'registrasi_sample' => new RegistrasiSampleResource($this->whenLoaded('registrasiSample')),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

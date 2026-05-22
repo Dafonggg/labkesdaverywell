@@ -21,7 +21,10 @@ class RegistrasiSampleResource extends JsonResource
             'status' => $this->status,
             'dibuat_oleh' => $this->dibuat_oleh,
             'pembuat' => new UserResource($this->whenLoaded('pembuat')),
+            'permohonan' => new PermohonanResource($this->whenLoaded('permohonan')),
             'samples' => SampleResource::collection($this->whenLoaded('samples')),
+            'sample_id' => $this->samples->first()?->id,
+            'sample' => $this->samples->isNotEmpty() ? new SampleResource($this->samples->first()) : null,
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

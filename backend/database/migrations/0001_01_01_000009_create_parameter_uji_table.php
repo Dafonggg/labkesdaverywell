@@ -18,6 +18,8 @@ return new class extends Migration
 
             $table->string('satuan', 100)->nullable();
 
+            $table->string('kategori', 100)->nullable();
+
             $table->decimal('baku_mutu_min', 15, 4)->nullable();
             $table->decimal('baku_mutu_max', 15, 4)->nullable();
 
@@ -26,6 +28,8 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
 
             $table->timestamps();
+
+            $table->unique(['nama_parameter', 'kategori']);
         });
     }
 

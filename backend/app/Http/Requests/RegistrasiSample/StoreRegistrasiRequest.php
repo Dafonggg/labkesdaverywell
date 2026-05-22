@@ -17,7 +17,23 @@ class StoreRegistrasiRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'permohonan_id' => ['required', 'uuid', 'exists:permohonan_pengujian,id'],
+            'permohonan_id' => [
+                'required',
+                'uuid',
+                'exists:permohonan_pengujian,id',
+                function ($attribute, $value, $fail) {
+                    $exists = \App\Models\RegistrasiSample::where('permohonan_id', $value)
+                        ->whereHas('samples.hasilUji')
+                        ->exists();
+                    if ($exists) {
+                        $fail('Permohonan ini sudah terdaftar dan memiliki parameter pengujian.');
+                    }
+                }
+            ],
+            'jenis_sample' => ['required', 'string'],
+            'nama_sample' => ['required', 'string'],
+            'parameters' => ['required', 'array'],
+            'parameters.*' => ['required', 'string'],
         ];
     }
 
@@ -29,6 +45,10 @@ class StoreRegistrasiRequest extends FormRequest
         return [
             'permohonan_id.required' => 'ID permohonan wajib diisi',
             'permohonan_id.exists' => 'Permohonan tidak ditemukan',
+            'permohonan_id.unique' => 'Permohonan ini sudah terdaftar sebelumnya',
+            'jenis_sample.required' => 'Jenis sampel wajib diisi',
+            'nama_sample.required' => 'Nama sampel wajib diisi',
+            'parameters.required' => 'Parameter pengujian wajib dipilih',
         ];
     }
 }

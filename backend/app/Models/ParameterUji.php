@@ -15,6 +15,8 @@ class ParameterUji extends Model
     protected $fillable = [
         'nama_parameter',
         'satuan',
+        'kategori',
+        'tipe_pengujian',
         'baku_mutu_min',
         'baku_mutu_max',
         'metode_uji',

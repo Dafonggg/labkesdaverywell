@@ -5,7 +5,7 @@ import { MapPin, Navigation, Search } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet default marker icon issue in bundlers
-delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',

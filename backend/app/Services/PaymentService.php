@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentService
 {
+    public function __construct(
+        protected PermohonanService $permohonanService
+    ) {}
+
     /**
      * Get all payments with optional filters and pagination.
      */
@@ -24,8 +28,10 @@ class PaymentService
 
         return $query->paginate($filters['per_page'] ?? 15);
     }
+
     /**
      * Create a payment record with DB transaction.
+     * Automatically transitions permohonan to PAID status.
      */
     public function create(array $data): Payment
     {
@@ -44,6 +50,9 @@ class PaymentService
             $permohonan->update([
                 'total_biaya' => $permohonan->payments()->sum('jumlah'),
             ]);
+
+            // Transition permohonan to PAID status (workflow enforcement)
+            $this->permohonanService->transitionToPaid($data['permohonan_id']);
 
             $payment->load('pencatat');
 

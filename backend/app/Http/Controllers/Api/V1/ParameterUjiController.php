@@ -7,6 +7,7 @@ use App\Http\Resources\ParameterUjiResource;
 use App\Services\HasilUjiService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ParameterUjiController extends Controller
 {
@@ -19,9 +20,12 @@ class ParameterUjiController extends Controller
     /**
      * GET /parameter-uji
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $parameters = $this->hasilUjiService->getAllParameters();
+        $kategori = $request->query('kategori');
+        $tipePengujian = $request->query('tipe_pengujian');
+
+        $parameters = $this->hasilUjiService->getAllParameters($kategori, $tipePengujian);
 
         return $this->successResponse(
             ParameterUjiResource::collection($parameters),

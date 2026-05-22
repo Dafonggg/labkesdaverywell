@@ -26,6 +26,7 @@ class Sample extends Model
         'longitude',
         'waktu_pengambilan',
         'status',
+        'catatan',
     ];
 
     protected function casts(): array

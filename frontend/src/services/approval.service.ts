@@ -7,11 +7,14 @@ export interface ApprovalPayload {
 
 export interface ApprovalData {
   id: string;
-  laporan_id: string;
-  approved_by: string;
+  laporan_id?: string;
+  approved_by?: string;
   catatan: string | null;
   status: string;
   created_at: string;
+  nomor_laporan?: string;
+  permohonan_id?: string;
+  analis_id?: string;
 }
 
 export const approveFinal = async (payload: ApprovalPayload): Promise<{ data: ApprovalData }> => {

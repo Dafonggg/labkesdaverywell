@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PermohonanController;
 use App\Http\Controllers\Api\V1\QcController;
 use App\Http\Controllers\Api\V1\RegistrasiSampleController;
+use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,6 +43,12 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('me');
     });
 
+    // ── Users ─────────────────────────────────────────────────────────────
+    Route::prefix('users')->name('users.')->group(function () {
+        Route::get('/petugas-lapangan', [UserController::class, 'petugasLapangan'])
+            ->name('petugas-lapangan');
+    });
+
     // ── Permohonan Pengujian ─────────────────────────────────────────────
     Route::prefix('permohonan')->name('permohonan.')->group(function () {
         Route::get('/', [PermohonanController::class, 'index'])
@@ -59,6 +66,9 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/{id}', [PermohonanController::class, 'destroy'])
             ->middleware('permission:permohonan.delete')
             ->name('destroy');
+        Route::post('/{id}/verify', [PermohonanController::class, 'verify'])
+            ->middleware('permission:permohonan.update')
+            ->name('verify');
     });
 
     // ── Payments ─────────────────────────────────────────────────────────
@@ -137,6 +147,9 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/final', [LaporanController::class, 'finalReports'])
             ->middleware('permission:laporan_final.view')
             ->name('final');
+        Route::post('/{id}/submit', [LaporanController::class, 'submit'])
+            ->middleware('permission:laporan.create')
+            ->name('submit');
         Route::get('/{id}/download', [LaporanController::class, 'download'])
             ->middleware('permission:laporan.view')
             ->name('download');

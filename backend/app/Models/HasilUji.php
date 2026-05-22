@@ -19,6 +19,7 @@ class HasilUji extends Model
         'parameter_uji_id',
         'analis_id',
         'nilai_hasil',
+        'status',
         'status_hasil',
         'metode_pengujian',
         'catatan',

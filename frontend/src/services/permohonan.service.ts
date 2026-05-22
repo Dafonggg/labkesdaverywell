@@ -5,6 +5,7 @@ export interface PermohonanFilters {
   status?: string;
   per_page?: number;
   page?: number;
+  unregistered?: number | string | boolean;
 }
 
 export interface PermohonanPayload {
@@ -40,6 +41,7 @@ export interface PermohonanData {
   updated_at: string;
   payments?: PaymentData[];
   jadwal_sampling?: JadwalData[];
+  registrasi_sample?: any[];
 }
 
 export interface PaymentData {
@@ -91,4 +93,9 @@ export const updatePermohonan = async (id: string, payload: Partial<PermohonanPa
 
 export const deletePermohonan = async (id: string): Promise<void> => {
   await apiClient.delete(`/permohonan/${id}`);
+};
+
+export const verifyPermohonan = async (id: string): Promise<{ data: PermohonanData }> => {
+  const response = await apiClient.post(`/permohonan/${id}/verify`);
+  return response.data;
 };

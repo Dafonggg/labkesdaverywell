@@ -1,8 +1,10 @@
 import { apiClient } from './axios';
 
 export interface RegistrasiPayload {
-  permohonan_id?: string;
-  sample_ids?: string[];
+  permohonan_id: string;
+  jenis_sample: string;
+  nama_sample: string;
+  parameters: string[];
 }
 
 export interface RegistrasiData {
@@ -12,6 +14,7 @@ export interface RegistrasiData {
   sample_id: string;
   status: string;
   sample?: SampleData;
+  samples?: SampleData[];
   created_at: string;
   updated_at: string;
 }
@@ -23,8 +26,10 @@ export interface SampleData {
   nama_sample: string;
   lokasi_pengambilan: string;
   status: string;
+  hasil_uji?: any[];
   created_at: string;
 }
+
 
 export const registerSample = async (payload: RegistrasiPayload): Promise<{ data: RegistrasiData }> => {
   const response = await apiClient.post('/registrasi-sample', payload);

@@ -22,6 +22,28 @@ class LaporanController extends Controller
     ) {}
 
     /**
+     * POST /laporan/{id}/submit
+     * Submit draft for Kepala UPTD approval.
+     */
+    public function submit(string $id): JsonResponse
+    {
+        $draft = $this->laporanService->submitForApproval($id);
+
+        $this->activityLogService->log(
+            'submit_approval',
+            'DraftLaporan',
+            $draft->id,
+            null,
+            $draft->toArray()
+        );
+
+        return $this->successResponse(
+            new DraftLaporanResource($draft),
+            'Draft laporan berhasil disubmit untuk persetujuan Kepala UPTD'
+        );
+    }
+
+    /**
      * POST /laporan/generate
      */
     public function generate(GenerateLaporanRequest $request): JsonResponse

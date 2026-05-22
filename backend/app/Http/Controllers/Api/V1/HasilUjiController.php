@@ -24,20 +24,24 @@ class HasilUjiController extends Controller
      */
     public function store(StoreHasilUjiRequest $request): JsonResponse
     {
-        $hasilUji = $this->hasilUjiService->create($request->validated());
+        try {
+            $hasilUji = $this->hasilUjiService->create($request->validated());
 
-        $this->activityLogService->log(
-            'create',
-            'HasilUji',
-            $hasilUji->id,
-            null,
-            $hasilUji->toArray()
-        );
+            $this->activityLogService->log(
+                'create',
+                'HasilUji',
+                $hasilUji->id,
+                null,
+                $hasilUji->toArray()
+            );
 
-        return $this->createdResponse(
-            new HasilUjiResource($hasilUji),
-            'Hasil uji berhasil disimpan'
-        );
+            return $this->createdResponse(
+                new HasilUjiResource($hasilUji),
+                'Hasil uji berhasil disimpan'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse($e->getMessage(), 400);
+        }
     }
 
     /**

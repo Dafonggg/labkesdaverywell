@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getDrafts, generateLaporan, downloadLaporan, getLaporanFinal } from '@/services/laporan.service';
+import { getDrafts, generateLaporan, downloadLaporan, getLaporanFinal, submitLaporan } from '@/services/laporan.service';
 import { toast } from 'sonner';
 
 export const useDrafts = (params?: { page?: number; per_page?: number }) => {
@@ -42,5 +42,21 @@ export const useLaporanFinal = (params?: { page?: number; per_page?: number }) =
   return useQuery({
     queryKey: ['laporan-final', params],
     queryFn: () => getLaporanFinal(params),
+  });
+};
+
+export const useSubmitLaporan = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => submitLaporan(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['laporan-drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['approval-pending'] });
+      toast.success('Draft laporan berhasil dikirim ke Kepala UPTD untuk persetujuan!');
+    },
+    onError: () => {
+      toast.error('Gagal mengirim draft. Pastikan status draft sudah benar.');
+    },
   });
 };

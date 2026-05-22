@@ -1,14 +1,24 @@
-import React from 'react';
-import { Clock, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { toast } from 'sonner';
-import { usePaymentList } from '@/hooks/usePayment';
+import React, { useState } from 'react';
+import { Clock, CheckCircle2, ShieldAlert, Plus, X, DollarSign } from 'lucide-react';
+import { usePaymentList, useCreatePayment } from '@/hooks/usePayment';
+import type { PaymentPayload } from '@/services/payment.service';
 import dayjs from 'dayjs';
 
 const Pembayaran: React.FC = () => {
   const { data: response, isLoading } = usePaymentList();
+  const createMutation = useCreatePayment();
+
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<PaymentPayload>({
+    permohonan_id: '',
+    jumlah: 0,
+    metode_pembayaran: 'transfer',
+  });
+
+
   const payments = response?.data || [];
 
-  // Calculate summary stats from real data
+  // Calculate summary stats
   const totalLunas = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.jumlah, 0);
   const totalPending = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.jumlah, 0);
   const totalOverdue = payments.filter(p => p.status === 'overdue').reduce((sum, p) => sum + p.jumlah, 0);
@@ -21,15 +31,37 @@ const Pembayaran: React.FC = () => {
     overdue: { label: 'Jatuh Tempo', style: 'bg-status-danger/10 text-status-danger' },
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.permohonan_id.trim()) return;
+    if (!form.jumlah || form.jumlah <= 0) return;
+
+    createMutation.mutate(form, {
+      onSuccess: () => {
+        setShowModal(false);
+        setForm({ permohonan_id: '', jumlah: 0, metode_pembayaran: 'transfer' });
+      },
+    });
+  };
+
   return (
     <div className="space-y-6">
-      <div className="border-b border-outline-variant pb-4">
-        <h1 className="font-headline-lg text-lg md:text-xl font-extrabold text-on-surface">
-          Keuangan & Verifikasi Pembayaran
-        </h1>
-        <p className="font-body-md text-xs text-on-surface-variant mt-1 font-medium">
-          Pantau billing invoice, verifikasi bukti pembayaran, dan kelola administrasi keuangan pengujian.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-outline-variant pb-4">
+        <div>
+          <h1 className="font-headline-lg text-lg md:text-xl font-extrabold text-on-surface">
+            Keuangan &amp; Verifikasi Pembayaran
+          </h1>
+          <p className="font-body-md text-xs text-on-surface-variant mt-1 font-medium">
+            Pantau billing invoice, verifikasi bukti pembayaran, dan kelola administrasi keuangan pengujian.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 bg-primary text-on-primary font-label-md text-xs font-semibold px-4 py-2.5 rounded-lg hover:bg-primary-container transition-all cursor-pointer soft-shadow"
+        >
+          <Plus size={14} />
+          Catat Pembayaran Baru
+        </button>
       </div>
 
       {/* KPI summaries */}
@@ -66,21 +98,17 @@ const Pembayaran: React.FC = () => {
       {/* Invoice list table */}
       <div className="bg-white rounded-xl border border-outline-variant overflow-hidden soft-shadow">
         <div className="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
-          <h3 className="font-headline-md text-xs font-bold text-on-surface uppercase tracking-wider">
-            Daftar Invoice Penagihan
+          <h3 className="font-headline-md text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+            <DollarSign size={14} className="text-primary" />
+            Riwayat Pembayaran
           </h3>
-          <button 
-            onClick={() => toast.success('Membuka buat invoice...')}
-            className="bg-primary text-on-primary font-label-md text-[10px] font-bold px-3 py-1.5 rounded hover:bg-primary-container transition-all cursor-pointer soft-shadow"
-          >
-            Buat Invoice Baru
-          </button>
+          <span className="text-[10px] text-on-surface-variant font-medium">{payments.length} transaksi</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-surface-container border-b border-outline-variant text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
-                <th className="p-4">No. Invoice</th>
+                <th className="p-4">ID Pembayaran</th>
                 <th className="p-4">Metode Bayar</th>
                 <th className="p-4">Total Biaya</th>
                 <th className="p-4">Tanggal</th>
@@ -103,7 +131,7 @@ const Pembayaran: React.FC = () => {
               ) : payments.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-12 text-center text-on-surface-variant font-semibold">
-                    Belum ada data pembayaran.
+                    Belum ada data pembayaran. Klik "Catat Pembayaran Baru" untuk menambahkan.
                   </td>
                 </tr>
               ) : (
@@ -111,22 +139,19 @@ const Pembayaran: React.FC = () => {
                   const statusInfo = STATUS_MAP[inv.status] || { label: inv.status, style: 'bg-gray-200 text-gray-700' };
                   return (
                     <tr key={inv.id} className="hover:bg-surface-container-low transition-all">
-                      <td className="p-4 font-bold text-primary">{inv.id.substring(0, 12)}</td>
-                      <td className="p-4 font-semibold capitalize">{inv.metode_pembayaran}</td>
+                      <td className="p-4 font-bold text-primary font-mono text-[10px]">{inv.id.substring(0, 12)}...</td>
+                      <td className="p-4 font-semibold capitalize">{inv.metode_pembayaran?.replace('_', ' ')}</td>
                       <td className="p-4 font-bold">{formatCurrency(inv.jumlah)}</td>
-                      <td className="p-4 text-on-surface-variant">{dayjs(inv.created_at).format('YYYY-MM-DD')}</td>
+                      <td className="p-4 text-on-surface-variant">{dayjs(inv.created_at).format('DD MMM YYYY')}</td>
                       <td className="p-4">
                         <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${statusInfo.style}`}>
                           {statusInfo.label}
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <button 
-                          onClick={() => toast.info(`Detail pembayaran ${inv.id.substring(0, 8)}`)}
-                          className="px-2.5 py-1.5 bg-white border border-outline-variant rounded font-semibold text-[10px] hover:bg-surface-container text-on-surface transition-all cursor-pointer"
-                        >
-                          Kuitansi / Detail
-                        </button>
+                        <span className="text-[10px] text-on-surface-variant font-medium">
+                          {inv.tanggal_bayar ? dayjs(inv.tanggal_bayar).format('HH:mm') : '-'}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -136,6 +161,84 @@ const Pembayaran: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Create Payment Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl soft-shadow border border-outline-variant w-full max-w-md">
+            <div className="flex justify-between items-center p-6 border-b border-outline-variant">
+              <h3 className="font-headline-md text-sm font-bold text-on-surface">Catat Pembayaran Baru</h3>
+              <button onClick={() => setShowModal(false)} className="p-1.5 hover:bg-surface-container rounded-lg cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="block font-label-sm text-[11px] font-bold text-on-surface-variant uppercase">ID Permohonan *</label>
+                <input
+                  type="text"
+                  required
+                  value={form.permohonan_id}
+                  onChange={(e) => setForm({ ...form, permohonan_id: e.target.value })}
+                  placeholder="UUID permohonan pengujian..."
+                  className="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-low text-xs outline-none focus:border-primary transition-all"
+                />
+                <p className="text-[10px] text-on-surface-variant">Salin dari halaman Permohonan (kolom No. Permohonan)</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block font-label-sm text-[11px] font-bold text-on-surface-variant uppercase">Jumlah Pembayaran *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs font-bold">Rp</span>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={form.jumlah || ''}
+                    onChange={(e) => setForm({ ...form, jumlah: parseFloat(e.target.value) || 0 })}
+                    placeholder="0"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-low text-xs outline-none focus:border-primary transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block font-label-sm text-[11px] font-bold text-on-surface-variant uppercase">Metode Pembayaran *</label>
+                <select
+                  value={form.metode_pembayaran}
+                  onChange={(e) => setForm({ ...form, metode_pembayaran: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-low text-xs outline-none focus:border-primary transition-all"
+                >
+                  <option value="transfer">Transfer Bank</option>
+                  <option value="cash">Tunai (Cash)</option>
+                  <option value="qris">QRIS</option>
+                </select>
+              </div>
+
+              <div className="bg-status-info/5 border border-status-info/20 rounded-lg p-3 text-[10px] text-status-info font-medium">
+                ⚡ Pembayaran yang dicatat akan otomatis mengubah status permohonan menjadi <strong>Lunas</strong> dan membuka penjadwalan sampling.
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 py-2.5 border border-outline-variant text-on-surface rounded-lg font-semibold text-xs hover:bg-surface-container transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  className="flex-1 py-2.5 bg-primary text-on-primary rounded-lg font-bold text-xs hover:bg-primary-container transition-all cursor-pointer soft-shadow disabled:opacity-80"
+                >
+                  {createMutation.isPending ? 'Menyimpan...' : 'Catat Pembayaran'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

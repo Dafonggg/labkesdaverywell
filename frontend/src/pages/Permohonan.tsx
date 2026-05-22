@@ -1,7 +1,8 @@
 import React, { useState, lazy, Suspense } from 'react';
-import { Plus, Search, Filter, Eye, Edit2, Trash2, X, MapPin } from 'lucide-react';
+import { Plus, Search, Filter, Eye, Edit2, Trash2, X, MapPin, CheckCircle2, CreditCard, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { usePermohonanList, useCreatePermohonan, useUpdatePermohonan, useDeletePermohonan } from '@/hooks/usePermohonan';
+import { usePermohonanList, useCreatePermohonan, useUpdatePermohonan, useDeletePermohonan, useVerifyPermohonan } from '@/hooks/usePermohonan';
+import { useCreatePayment } from '@/hooks/usePayment';
 import type { PermohonanData, PermohonanPayload } from '@/services/permohonan.service';
 import dayjs from 'dayjs';
 
@@ -10,9 +11,12 @@ const LocationPicker = lazy(() => import('@/components/LocationPicker'));
 
 const STATUS_MAP: Record<string, { label: string; style: string }> = {
   pending: { label: 'Pending', style: 'bg-status-warning/10 text-status-warning' },
+  waiting_payment: { label: 'Menunggu Pembayaran', style: 'bg-orange-100 text-orange-600' },
+  paid: { label: 'Lunas', style: 'bg-status-success/10 text-status-success' },
+  scheduled: { label: 'Terjadwal', style: 'bg-status-info/10 text-status-info' },
+  completed: { label: 'Selesai', style: 'bg-status-success/10 text-status-success' },
   approved: { label: 'Disetujui', style: 'bg-status-success/10 text-status-success' },
   rejected: { label: 'Ditolak', style: 'bg-status-danger/10 text-status-danger' },
-  completed: { label: 'Selesai', style: 'bg-status-success/10 text-status-success' },
   cancelled: { label: 'Dibatalkan', style: 'bg-gray-400/10 text-gray-700' },
 };
 
@@ -24,6 +28,11 @@ const Permohonan: React.FC = () => {
   const [editingItem, setEditingItem] = useState<PermohonanData | null>(null);
   const [detailItem, setDetailItem] = useState<PermohonanData | null>(null);
 
+  // Payment quick-modal state
+  const [payModal, setPayModal] = useState<{ open: boolean; permohonanId: string; nomor: string } | null>(null);
+  const [payAmount, setPayAmount] = useState(0);
+  const [payMethod, setPayMethod] = useState('transfer');
+
   // Form state
   const [form, setForm] = useState<PermohonanPayload>({
     jenis_pemohon: 'instansi',
@@ -32,7 +41,7 @@ const Permohonan: React.FC = () => {
     email: '',
     phone: '',
     alamat: '',
-    jenis_sample: 'Air Bersih',
+    jenis_sample: 'Air',
     catatan: '',
     latitude: null,
     longitude: null,
@@ -48,6 +57,8 @@ const Permohonan: React.FC = () => {
   const createMutation = useCreatePermohonan();
   const updateMutation = useUpdatePermohonan();
   const deleteMutation = useDeletePermohonan();
+  const verifyMutation = useVerifyPermohonan();
+  const payMutation = useCreatePayment();
 
   const permohonanList = response?.data || [];
   const meta = response?.meta;
@@ -60,7 +71,7 @@ const Permohonan: React.FC = () => {
       email: '',
       phone: '',
       alamat: '',
-      jenis_sample: 'Air Bersih',
+      jenis_sample: 'Air',
       catatan: '',
       latitude: null,
       longitude: null,
@@ -82,7 +93,7 @@ const Permohonan: React.FC = () => {
       email: item.email || '',
       phone: item.phone || '',
       alamat: item.alamat || '',
-      jenis_sample: item.jenis_sample || 'Air Bersih',
+      jenis_sample: item.jenis_sample || 'Air',
       catatan: item.catatan || '',
       latitude: item.latitude || null,
       longitude: item.longitude || null,
@@ -121,6 +132,27 @@ const Permohonan: React.FC = () => {
     if (confirm('Apakah Anda yakin ingin menghapus permohonan ini?')) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleVerify = (id: string, nomor: string) => {
+    if (confirm(`Verifikasi permohonan ${nomor}? Status akan berubah ke Menunggu Pembayaran.`)) {
+      verifyMutation.mutate(id);
+    }
+  };
+
+  const openPayModal = (item: PermohonanData) => {
+    setPayAmount(item.total_biaya || 0);
+    setPayMethod('transfer');
+    setPayModal({ open: true, permohonanId: item.id, nomor: item.nomor_permohonan });
+  };
+
+  const handlePay = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payModal || payAmount <= 0) return;
+    payMutation.mutate(
+      { permohonan_id: payModal.permohonanId, jumlah: payAmount, metode_pembayaran: payMethod },
+      { onSuccess: () => { setPayModal(null); setDetailItem(null); } }
+    );
   };
 
   return (
@@ -170,7 +202,9 @@ const Permohonan: React.FC = () => {
           {[
             { key: '', label: 'Semua' },
             { key: 'pending', label: 'Pending' },
-            { key: 'approved', label: 'Disetujui' },
+            { key: 'waiting_payment', label: 'Menunggu Bayar' },
+            { key: 'paid', label: 'Lunas' },
+            { key: 'scheduled', label: 'Terjadwal' },
             { key: 'completed', label: 'Selesai' },
           ].map((opt) => (
             <button
@@ -250,7 +284,7 @@ const Permohonan: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-4">
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button 
                             onClick={() => setDetailItem(req)}
                             className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-primary transition-all cursor-pointer"
@@ -258,6 +292,25 @@ const Permohonan: React.FC = () => {
                           >
                             <Eye size={14} />
                           </button>
+                          {req.status === 'pending' && (
+                            <button 
+                              onClick={() => handleVerify(req.id, req.nomor_permohonan)}
+                              disabled={verifyMutation.isPending}
+                              className="p-1.5 hover:bg-status-success/10 rounded-lg text-on-surface-variant hover:text-status-success transition-all cursor-pointer disabled:opacity-60"
+                              title="Verifikasi (Pending → Menunggu Pembayaran)"
+                            >
+                              <CheckCircle2 size={14} />
+                            </button>
+                          )}
+                          {req.status === 'waiting_payment' && (
+                            <button 
+                              onClick={() => openPayModal(req)}
+                              className="p-1.5 hover:bg-primary/10 rounded-lg text-on-surface-variant hover:text-primary transition-all cursor-pointer"
+                              title="Catat Pembayaran"
+                            >
+                              <CreditCard size={14} />
+                            </button>
+                          )}
                           <button 
                             onClick={() => openEditModal(req)}
                             className="p-1.5 hover:bg-surface-container rounded-lg text-on-surface-variant hover:text-primary transition-all cursor-pointer"
@@ -339,10 +392,12 @@ const Permohonan: React.FC = () => {
                     onChange={(e) => setForm({ ...form, jenis_sample: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-low text-xs outline-none focus:border-primary transition-all"
                   >
-                    <option value="Air Bersih">Air Bersih</option>
+                    <option value="Air">Air</option>
                     <option value="Air Limbah">Air Limbah</option>
-                    <option value="Udara Ambien">Udara Ambien</option>
+                    <option value="Makanan & Minuman">Makanan & Minuman</option>
+                    <option value="Udara">Udara</option>
                     <option value="Tanah">Tanah</option>
+                    <option value="Swab Lingkungan">Swab Lingkungan</option>
                   </select>
                 </div>
               </div>
@@ -553,13 +608,99 @@ const Permohonan: React.FC = () => {
                 </div>
               )}
 
-              <button
-                onClick={() => setDetailItem(null)}
-                className="w-full py-2.5 border border-outline-variant text-on-surface rounded-lg font-semibold text-xs hover:bg-surface-container transition-all cursor-pointer"
-              >
-                Tutup
+              {/* Workflow Action Buttons based on status */}
+              <div className="border-t border-outline-variant pt-4 space-y-2">
+                {detailItem.status === 'pending' && (
+                  <button
+                    onClick={() => { handleVerify(detailItem.id, detailItem.nomor_permohonan); setDetailItem(null); }}
+                    disabled={verifyMutation.isPending}
+                    className="w-full py-2.5 bg-status-success text-white rounded-lg font-bold text-xs hover:opacity-90 transition-all cursor-pointer soft-shadow flex items-center justify-center gap-2 disabled:opacity-70"
+                  >
+                    <CheckCircle2 size={14} />
+                    Verifikasi Permohonan (Pending → Menunggu Pembayaran)
+                  </button>
+                )}
+                {detailItem.status === 'waiting_payment' && (
+                  <button
+                    onClick={() => openPayModal(detailItem)}
+                    className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-bold text-xs hover:bg-primary-container transition-all cursor-pointer soft-shadow flex items-center justify-center gap-2"
+                  >
+                    <CreditCard size={14} />
+                    Catat Pembayaran
+                  </button>
+                )}
+                {detailItem.status === 'paid' && (
+                  <div className="w-full py-2.5 bg-status-success/10 text-status-success rounded-lg font-bold text-xs flex items-center justify-center gap-2">
+                    <CheckCircle2 size={14} />
+                    Pembayaran Lunas — Siap Penjadwalan Sampling
+                    <ArrowRight size={14} />
+                  </div>
+                )}
+                <button
+                  onClick={() => setDetailItem(null)}
+                  className="w-full py-2.5 border border-outline-variant text-on-surface rounded-lg font-semibold text-xs hover:bg-surface-container transition-all cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Payment Modal (from Permohonan table/detail) */}
+      {payModal?.open && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl soft-shadow border border-outline-variant w-full max-w-md">
+            <div className="flex justify-between items-center p-6 border-b border-outline-variant">
+              <div>
+                <h3 className="font-headline-md text-sm font-bold text-on-surface">Catat Pembayaran</h3>
+                <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">{payModal.nomor}</p>
+              </div>
+              <button onClick={() => setPayModal(null)} className="p-1.5 hover:bg-surface-container rounded-lg cursor-pointer">
+                <X size={18} />
               </button>
             </div>
+            <form onSubmit={handlePay} className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="block font-label-sm text-[11px] font-bold text-on-surface-variant uppercase">Jumlah Pembayaran *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs font-bold">Rp</span>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={payAmount || ''}
+                    onChange={(e) => setPayAmount(parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-low text-xs outline-none focus:border-primary transition-all"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block font-label-sm text-[11px] font-bold text-on-surface-variant uppercase">Metode Pembayaran *</label>
+                <select
+                  value={payMethod}
+                  onChange={(e) => setPayMethod(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-outline-variant bg-surface-container-low text-xs outline-none focus:border-primary transition-all"
+                >
+                  <option value="transfer">Transfer Bank</option>
+                  <option value="cash">Tunai (Cash)</option>
+                  <option value="qris">QRIS</option>
+                </select>
+              </div>
+              <div className="bg-status-info/5 border border-status-info/20 rounded-lg p-3 text-[10px] text-status-info font-medium">
+                ⚡ Setelah pembayaran dicatat, status permohonan otomatis berubah ke <strong>Lunas</strong>.
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setPayModal(null)} className="flex-1 py-2.5 border border-outline-variant rounded-lg text-xs font-semibold cursor-pointer hover:bg-surface-container transition-all">
+                  Batal
+                </button>
+                <button type="submit" disabled={payMutation.isPending || payAmount <= 0} className="flex-1 py-2.5 bg-primary text-on-primary rounded-lg font-bold text-xs cursor-pointer soft-shadow disabled:opacity-80 hover:bg-primary-container transition-all">
+                  {payMutation.isPending ? 'Menyimpan...' : 'Catat Pembayaran'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

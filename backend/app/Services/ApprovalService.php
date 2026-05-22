@@ -10,13 +10,16 @@ use App\Models\Notification;
 use App\Models\PersetujuanLaporan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ApprovalService
 {
+    public function __construct(
+        protected LaporanService $laporanService
+    ) {}
+
     /**
      * Final approval of a laporan by Kepala UPTD.
-     * Creates persetujuan, laporan_final, and arsip records in one transaction.
+     * Uses LaporanService workflow methods to enforce proper state transitions.
      */
     public function approveFinal(array $data): PersetujuanLaporan
     {
@@ -32,25 +35,16 @@ class ApprovalService
                 'approved_at' => now(),
             ]);
 
-            // Update draft status
-            $draftLaporan->update([
-                'status' => LaporanStatus::APPROVED->value,
-            ]);
+            // Transition draft to APPROVED status (workflow enforcement)
+            $this->laporanService->transitionToApproved($data['laporan_id']);
 
-            // Generate SHA256 hash for integrity
-            $hashContent = $draftLaporan->id . $draftLaporan->nomor_laporan . now()->toISOString();
-            $hash = hash('sha256', $hashContent);
+            // Finalize report (APPROVED → FINAL)
+            $laporanFinal = $this->laporanService->finalize($data['laporan_id']);
 
-            // Create final report
-            $laporanFinal = LaporanFinal::create([
-                'draft_laporan_id' => $draftLaporan->id,
-                'nomor_laporan' => $draftLaporan->nomor_laporan,
-                'hash_sha256' => $hash,
-                'is_final' => true,
-                'finalized_at' => now(),
-            ]);
+            // Archive report (FINAL → ARCHIVED)
+            $this->laporanService->archive($laporanFinal->id);
 
-            // Create archive
+            // Create archive record for tracking
             ArsipLaporan::create([
                 'laporan_final_id' => $laporanFinal->id,
                 'archived_at' => now(),
@@ -78,6 +72,7 @@ class ApprovalService
 
     /**
      * Reject a laporan and send back for revision.
+     * Returns draft to DRAFT status for revision (workflow enforcement).
      */
     public function rejectFinal(array $data): PersetujuanLaporan
     {
@@ -93,10 +88,8 @@ class ApprovalService
                 'approved_at' => now(),
             ]);
 
-            // Update draft status back to revision
-            $draftLaporan->update([
-                'status' => LaporanStatus::REVISION->value,
-            ]);
+            // Transition draft back to DRAFT for revision (workflow enforcement)
+            $this->laporanService->transitionToDraft($data['laporan_id']);
 
             // Notify analis about rejection
             if ($draftLaporan->analis_id) {
@@ -122,7 +115,7 @@ class ApprovalService
     public function getPending(array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         return DraftLaporan::with(['permohonan', 'analis'])
-            ->whereIn('status', [LaporanStatus::PENDING_APPROVAL->value, LaporanStatus::REVIEW->value])
+            ->where('status', LaporanStatus::PENDING_APPROVAL->value)
             ->orderByDesc('dibuat_pada')
             ->paginate($filters['per_page'] ?? 15);
     }

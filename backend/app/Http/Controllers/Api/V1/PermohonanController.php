@@ -111,4 +111,26 @@ class PermohonanController extends Controller
 
         return $this->successResponse(null, 'Permohonan berhasil dihapus');
     }
+
+    /**
+     * POST /permohonan/{id}/verify
+     * Admin verifies permohonan and transitions PENDING → WAITING_PAYMENT.
+     */
+    public function verify(string $id): JsonResponse
+    {
+        $permohonan = $this->permohonanService->transitionToWaitingPayment($id);
+
+        $this->activityLogService->log(
+            'update',
+            'PermohonanPengujian',
+            $permohonan->id,
+            null,
+            $permohonan->toArray()
+        );
+
+        return $this->successResponse(
+            new PermohonanResource($permohonan),
+            'Permohonan berhasil diverifikasi. Status diubah ke Menunggu Pembayaran.'
+        );
+    }
 }

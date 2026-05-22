@@ -9,12 +9,24 @@ import { toast } from 'sonner';
 import { useAuthStore, getRoleDisplayName } from '@/stores/auth';
 import { useDashboardSummary } from '@/hooks/useDashboard';
 import { useNavigate } from 'react-router-dom';
+import SampleDiuji from '@/pages/SampleDiuji';
+import QcVerifikasi from '@/pages/QcVerifikasi';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const { data: summaryResponse, isLoading } = useDashboardSummary();
   const summary = summaryResponse?.data;
+
+  // Dynamically render SampleDiuji page as the dashboard for petugas_lab role
+  if (user?.role === 'petugas_lab') {
+    return <SampleDiuji />;
+  }
+
+  // Dynamically render QcVerifikasi page as the dashboard for qc role
+  if (user?.role === 'qc') {
+    return <QcVerifikasi />;
+  }
 
   const handleExportReport = () => {
     toast.success('Laporan Ringkasan Administrasi berhasil diekspor!');
